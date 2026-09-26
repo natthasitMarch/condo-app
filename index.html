@@ -89,12 +89,7 @@ select{background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http:
 #lock{display:none;max-width:440px;margin:0 auto;padding:110px 20px;text-align:center}
 #lock h1{font-size:17px;font-weight:600;margin:0 0 6px}
 #lock p{font-size:13px;color:var(--mute);margin:0 0 26px}
-#pin{text-align:center;font-size:22px;letter-spacing:8px;max-width:230px;margin:0 auto 12px;padding:12px}
 #pinErr{font-size:12px;color:var(--out);min-height:17px;margin-bottom:10px}
-#pinBtn{max-width:230px;margin:0 auto;display:block}
-.rem{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--mute);margin:0 auto 16px}
-.rem input{appearance:auto;-webkit-appearance:checkbox;width:20px;height:20px;padding:0;margin:0;accent-color:var(--key);cursor:pointer}
-.rem label{margin:0;font-size:14px;color:var(--ink2);cursor:pointer}
 
 /* ===== ภาพรวม (dashboard) ===== */
 .filters{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
@@ -184,11 +179,9 @@ details.more[open]>summary{margin-bottom:12px}
 
 <div id="lock">
   <h1>บันทึกค่าใช้จ่ายคอนโด</h1>
-  <p>ใส่รหัสผ่านเพื่อเข้าใช้งาน</p>
-  <input id="pin" type="password" autocomplete="current-password" placeholder="····">
+  <p>เข้าสู่ระบบด้วย Gmail ที่ได้รับอนุญาต</p>
+  <div id="gbtn" style="display:flex;justify-content:center;min-height:44px"></div>
   <div id="pinErr"></div>
-  <div class="rem"><input type="checkbox" id="remember" checked><label for="remember">จำรหัสบนเครื่องนี้</label></div>
-  <button class="go" id="pinBtn">เข้าใช้งาน</button>
 </div>
 
 <div class="wrap" id="app" style="display:none">
@@ -256,65 +249,94 @@ details.more[open]>summary{margin-bottom:12px}
 <div class="bar" id="bar"><b id="barTxt"></b><button id="barBtn">เลิกทำ</button></div>
 <div class="tip" id="tip"></div>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 /* ===== ตั้งค่า: URL ของ Web app (Apps Script) ===== */
+var CLIENT_ID = '1008403198159-d8i1asj7drku9uotinvvog5qncdoaji0.apps.googleusercontent.com';
 var API_URL = 'https://script.google.com/macros/s/AKfycbwuhbSkIERP20xvtIP0n75xuhp7io_OVCYN0dBIqYGcAaSX4J6oFBwSiFDO8VZnX7Q/exec';
 
-var BOOT=null, ROOM='', LASTROW=0, PIN='', AUTO_AMT=false, AUTO_ITEM=false, BUSY=false;
+var BOOT=null, ROOM='', LASTROW=0, TOKEN='', AUTO_AMT=false, AUTO_ITEM=false, BUSY=false;
 var DASH=null, DASH_AT=0, DASH_STALE=true, F={room:'all',range:'all'}, VIEW='log';
 var $=function(id){return document.getElementById(id);};
 var baht=function(n){return (n<0?'-':'')+'฿'+Math.abs(Math.round(n)).toLocaleString('en-US');};
 var num=function(n){return Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});};
 
 /* ===== เรียก API ===== */
+function waitTok(){
+  if(tokValid(TOKEN)||!STARTED) return Promise.resolve();
+  if(GIS_READY) try{ google.accounts.id.prompt(); }catch(e){}
+  return new Promise(function(res){
+    var n=0, t=setInterval(function(){ if(tokValid(TOKEN)||++n>20){ clearInterval(t); res(); } },250);
+  });
+}
 function api(action, payload){
   if(API_URL.indexOf('PASTE')===0) return Promise.reject(new Error('CONFIG'));
-  return fetch(API_URL, {
-    method:'POST',
-    headers:{'Content-Type':'text/plain;charset=utf-8'},   // ห้ามใช้ application/json (จะติด CORS preflight)
-    body:JSON.stringify(Object.assign({action:action, pin:PIN}, payload||{}))
+  return waitTok().then(function(){
+    return fetch(API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},   // ห้ามใช้ application/json (จะติด CORS preflight)
+      body:JSON.stringify(Object.assign({action:action, token:TOKEN}, payload||{}))
+    });
   }).then(function(r){ return r.json(); })
-    .then(function(j){ if(j && j.error) throw new Error(j.error); return j; });
+    .then(function(j){
+      if(j && j.error){
+        if(STARTED && (j.error==='AUTH_EXPIRED'||j.error==='AUTH_REQUIRED')) needLogin('หมดเวลาเข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่');
+        throw new Error(j.error);
+      }
+      return j;
+    });
 }
 function errText(e){
   var m=(e&&e.message)||'';
-  if(m==='PIN_WRONG')   return 'รหัสผ่านไม่ถูกต้อง';
-  if(m==='LOCKED')      return 'ใส่รหัสผิดหลายครั้ง ถูกล็อกชั่วคราว ลองใหม่ใน 30 นาที';
-  if(m==='PIN_NOT_SET') return 'ยังไม่ได้ตั้งรหัสผ่านฝั่ง Apps Script (Script properties: PIN)';
+  if(m==='NOT_ALLOWED') return 'อีเมลนี้ไม่ได้รับอนุญาตให้ใช้งาน';
+  if(m==='AUTH_EXPIRED'||m==='AUTH_REQUIRED') return 'หมดเวลาเข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่';
   if(m==='CONFIG')      return 'ยังไม่ได้ใส่ URL ของ Web app ในไฟล์ index.html';
   if(m.indexOf('JSON')>=0 || m==='Failed to fetch' || m==='Load failed' || m==='NetworkError when attempting to fetch resource.')
     return 'เชื่อมต่อไม่สำเร็จ ตรวจอินเทอร์เน็ต หรืออาจใช้โควตา Apps Script เต็ม ลองใหม่อีกครั้ง';
   return m||'เกิดข้อผิดพลาด';
 }
 
-/* ===== เข้าสู่ระบบ ===== */
-function boot(p, remember){
-  PIN=p;
+/* ===== เข้าสู่ระบบด้วย Google ===== */
+var TOK_KEY='condoTok', GIS_READY=false, STARTED=false;
+function jwtExp(t){ try{ var p=t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'); return JSON.parse(atob(p)).exp||0; }catch(e){ return 0; } }
+function tokValid(t){ return !!t && jwtExp(t) > Date.now()/1000 + 120; }
+function showLock(msg){
+  $('app').style.display='none'; $('lock').style.display='block';
+  $('pinErr').textContent=msg||'';
+}
+function gotToken(t){
+  TOKEN=t; try{ localStorage.setItem(TOK_KEY,t); }catch(e){}
+  if(STARTED){ $('lock').style.display='none'; $('app').style.display='block'; return; }
+  $('pinErr').textContent='กำลังเข้าสู่ระบบ...';
   api('bootstrap').then(function(b){
-    try{ if(remember) localStorage.setItem('condoPin',p); else localStorage.removeItem('condoPin'); }catch(e){}
-    $('lock').style.display='none'; $('app').style.display='block'; init(b);
+    STARTED=true; $('lock').style.display='none'; $('app').style.display='block'; init(b);
   }).catch(function(e){
-    var m=(e&&e.message)||'';
-    if(m==='PIN_WRONG'||m==='LOCKED'){ try{localStorage.removeItem('condoPin');}catch(x){} }
-    $('app').style.display='none'; $('lock').style.display='block';
-    $('pinErr').textContent=errText(e);
-    $('pinBtn').disabled=false; $('pinBtn').textContent='เข้าใช้งาน';
+    try{ localStorage.removeItem(TOK_KEY); }catch(x){}
+    TOKEN=''; showLock(errText(e)); renderGBtn();
   });
 }
+function renderGBtn(){
+  if(!GIS_READY) return;
+  google.accounts.id.renderButton($('gbtn'),{theme:'outline',size:'large',shape:'pill',text:'signin_with',locale:'th',width:260});
+}
+function needLogin(msg){ showLock(msg||'กรุณาเข้าสู่ระบบ'); renderGBtn(); if(GIS_READY) try{ google.accounts.id.prompt(); }catch(e){} }
+function initGIS(){
+  if(GIS_READY) return;
+  if(!window.google||!google.accounts||!google.accounts.id){ setTimeout(initGIS,200); return; }
+  google.accounts.id.initialize({client_id:CLIENT_ID, callback:function(r){ gotToken(r.credential); },
+    auto_select:true, cancel_on_tap_outside:false, use_fedcm_for_prompt:true});
+  GIS_READY=true;
+  if(!TOKEN) needLogin(''); else renderGBtn();
+}
 window.addEventListener('DOMContentLoaded',function(){
-  $('pinBtn').onclick=function(){
-    if(!$('pin').value) return;
-    $('pinBtn').disabled=true; $('pinBtn').textContent='กำลังตรวจสอบ';
-    $('pinErr').textContent=''; boot($('pin').value, $('remember').checked);
-  };
-  $('pin').addEventListener('keydown',function(e){ if(e.key==='Enter') $('pinBtn').click(); });
   $('logout').onclick=function(){
-    try{localStorage.removeItem('condoPin');}catch(e){}
-    PIN=''; location.reload();
+    try{ localStorage.removeItem(TOK_KEY); if(window.google&&google.accounts) google.accounts.id.disableAutoSelect(); }catch(e){}
+    TOKEN=''; location.reload();
   };
-  var saved=''; try{ saved=localStorage.getItem('condoPin')||''; }catch(e){}
-  if(saved){ $('lock').style.display='block'; $('pinErr').textContent='กำลังเข้าสู่ระบบ...'; boot(saved,true); }
-  else { $('lock').style.display='block'; }
+  var saved=''; try{ saved=localStorage.getItem(TOK_KEY)||''; }catch(e){}
+  $('lock').style.display='block';
+  if(tokValid(saved)){ TOKEN=saved; gotToken(saved); }
+  initGIS();
 });
 
 /* ===== แท็บ ===== */
@@ -498,7 +520,7 @@ function flushQueue(){
     if(left) flushQueue(); else refreshBoot();
   }).catch(function(e){
     SENDING=false; var m=(e&&e.message)||'';
-    toast((m==='PIN_WRONG'||m==='LOCKED') ? errText(e) : 'ส่งไม่สำเร็จ เก็บไว้ในเครื่อง '+qLoad().length+' รายการ จะลองใหม่ให้เอง',false);
+    toast((m==='NOT_ALLOWED'||m==='AUTH_EXPIRED'||m==='AUTH_REQUIRED') ? errText(e) : 'ส่งไม่สำเร็จ เก็บไว้ในเครื่อง '+qLoad().length+' รายการ จะลองใหม่ให้เอง',false);
     clearTimeout(window._rt); window._rt=setTimeout(flushQueue,20000);
   });
 }
