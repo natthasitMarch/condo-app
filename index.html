@@ -374,8 +374,9 @@ function gotToken(t){
   api('bootstrap').then(function(b){
     STARTED=true; $('lock').style.display='none'; $('app').classList.add('on'); init(b);
   }).catch(function(e){
-    try{ localStorage.removeItem(TOK_KEY); }catch(x){}
-    TOKEN=''; showLock(errText(e)); renderGBtn();
+    var m=(e&&e.message)||'', auth=/AUTH_|NOT_ALLOWED/.test(m);
+    if(auth){ try{ localStorage.removeItem(TOK_KEY); }catch(x){} TOKEN=''; showLock(errText(e)); renderGBtn(); }
+    else { showLock(errText(e)+' (กำลังลองใหม่)'); setTimeout(function(){ if(!STARTED && TOKEN) gotToken(TOKEN); },4000); }
   });
 }
 function renderGBtn(){
