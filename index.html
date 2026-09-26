@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>คอนโด</title>
+<meta name="theme-color" content="#F59A1B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="คอนโด">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+:root{--ink:#1C1C1E;--mute:#8A8F98;--line:#E4E7EB;--bg:#FFFFFF;
+      --key:#1F3864;--in:#157347;--out:#B42318;--soft:#F7F8FA}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);
+ font-family:"Sarabun","Noto Sans Thai",-apple-system,"Segoe UI",Tahoma,sans-serif;font-size:16px;line-height:1.5}
+.wrap{max-width:440px;margin:0 auto;padding:0 20px 120px}
+.top{padding:22px 0 18px;border-bottom:1px solid var(--line);margin-bottom:24px}
+.top h1{margin:0;font-size:18px;font-weight:600;letter-spacing:-.2px}
+.f{margin-bottom:20px}
+label{display:block;font-size:12px;color:var(--mute);margin-bottom:7px;letter-spacing:.2px}
+input,select{width:100%;padding:11px 12px;font-size:16px;font-family:inherit;color:var(--ink);
+ background:var(--bg);border:1px solid var(--line);border-radius:8px;appearance:none;-webkit-appearance:none}
+input:focus,select:focus{outline:none;border-color:var(--ink)}
+input::placeholder{color:#C4C8CE}
+select{background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238A8F98' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+ background-repeat:no-repeat;background-position:right 13px center}
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.chip{padding:10px 2px;text-align:center;border:1px solid var(--line);border-radius:8px;
+ font-size:13px;cursor:pointer;user-select:none;color:var(--ink)}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+#amount{font-size:30px;font-weight:600;text-align:right;padding:6px 12px 10px;border:0;
+ border-bottom:1.5px solid var(--line);border-radius:0;letter-spacing:-.5px}
+#amount:focus{border-bottom-color:var(--ink)}
+.split{background:var(--soft);border-radius:8px;padding:14px;margin-bottom:20px;display:none}
+.split.on{display:block}
+.split .g{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.split label{font-size:11px}
+.split input{background:var(--bg)}
+.note{font-size:12px;margin-top:10px;line-height:1.45}
+.note.bad{color:var(--out)} .note.good{color:var(--in)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.go{width:100%;padding:14px;font-size:16px;font-weight:600;color:#fff;background:var(--key);
+ border:0;border-radius:8px;font-family:inherit;cursor:pointer;letter-spacing:.2px}
+.go:disabled{background:#AAB0B8}
+.link{display:block;width:100%;margin-top:14px;padding:0;background:none;border:0;
+ font-family:inherit;font-size:13px;color:var(--mute);cursor:pointer;text-decoration:underline;
+ text-underline-offset:3px}
+.sec{margin-top:34px;padding-top:18px;border-top:1px solid var(--line)}
+.sec h2{margin:0 0 4px;font-size:12px;font-weight:400;color:var(--mute);letter-spacing:.2px}
+.r{display:flex;align-items:baseline;gap:10px;padding:11px 0;border-bottom:1px solid #F1F3F5;font-size:14px}
+.r:last-child{border:0}
+.r .dt{color:var(--mute);font-size:12px;min-width:54px;flex-shrink:0}
+.r .tx{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.r .tx small{color:var(--mute);font-size:12px}
+.r .vl{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:14px}
+.empty{font-size:13px;color:var(--mute);padding:11px 0}
+.meta{margin-top:16px;font-size:11px;color:var(--mute);line-height:1.7}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:15px 20px calc(15px + env(safe-area-inset-bottom));color:#fff;font-size:14px;
+ display:none;align-items:center;gap:14px;z-index:50}
+.bar.on{display:flex} .bar.ok{background:var(--ink)} .bar.no{background:var(--out)}
+.bar b{font-weight:400;flex:1}
+.bar button{background:none;border:1px solid rgba(255,255,255,.45);color:#fff;padding:6px 14px;
+ border-radius:6px;font-family:inherit;font-size:13px;cursor:pointer}
+#lock{display:none;max-width:440px;margin:0 auto;padding:110px 20px;text-align:center}
+#lock h1{font-size:17px;font-weight:600;margin:0 0 6px}
+#lock p{font-size:13px;color:var(--mute);margin:0 0 26px}
+#pin{text-align:center;font-size:22px;letter-spacing:8px;max-width:230px;margin:0 auto 12px;padding:12px}
+#pinErr{font-size:12px;color:var(--out);min-height:17px;margin-bottom:10px}
+#pinBtn{max-width:230px;margin:0 auto;display:block}
+.rem{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--mute);margin:0 auto 16px}
+.rem input{width:auto;padding:0;margin:0}
+.rem label{margin:0;font-size:13px}
+</style>
+</head>
+<body>
+
+<div id="lock">
+  <h1>บันทึกค่าใช้จ่ายคอนโด</h1>
+  <p>ใส่รหัสผ่านเพื่อเข้าใช้งาน</p>
+  <input id="pin" type="password" autocomplete="current-password" placeholder="····">
+  <div id="pinErr"></div>
+  <div class="rem"><input type="checkbox" id="remember" checked><label for="remember">จำรหัสบนเครื่องนี้</label></div>
+  <button class="go" id="pinBtn">เข้าใช้งาน</button>
+</div>
+
+<div class="wrap" id="app" style="display:none">
+  <div class="top"><h1>บันทึกรายการ</h1></div>
+
+  <div class="f">
+    <label>ห้อง</label>
+    <div class="chips" id="rooms"></div>
+  </div>
+
+  <div class="f">
+    <label>หมวด</label>
+    <select id="cat"><option value="">เลือกหมวด</option></select>
+  </div>
+
+  <div class="f">
+    <label>จำนวนเงิน</label>
+    <input id="amount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+  </div>
+
+  <div class="split" id="split">
+    <div class="g">
+      <div><label>เงินต้น</label><input id="principal" type="number" inputmode="decimal" step="0.01"></div>
+      <div><label>ดอกเบี้ย (ติดลบได้ถ้าธนาคารคืน)</label><input id="interest" type="number" inputmode="decimal" step="0.01"></div>
+    </div>
+    <div class="note" id="splitNote"></div>
+  </div>
+
+  <div class="f">
+    <label>รายการ</label>
+    <input id="item" type="text" placeholder="เช่น ค่าซ่อมแอร์">
+  </div>
+
+  <div class="f two">
+    <div><label>วันที่</label><input id="date" type="date"></div>
+    <div><label>หมายเหตุ</label><input id="note" type="text" placeholder="ไม่ใส่ก็ได้"></div>
+  </div>
+
+  <button class="go" id="save">บันทึก</button>
+  <button class="link" id="monthly">สร้างรายการประจำเดือน</button>
+
+  <div class="sec">
+    <h2>ล่าสุด</h2>
+    <div id="recent"></div>
+    <div class="meta" id="meta"></div>
+    <button class="link" id="logout" style="text-align:left;margin-top:22px">ออกจากระบบ / ล้างรหัสที่จำไว้</button>
+  </div>
+</div>
+
+<div class="bar" id="bar"><b id="barTxt"></b><button id="barBtn">เลิกทำ</button></div>
+
+<script>
+/* ===== ตั้งค่า: วาง URL ของ Web app (Deploy จาก Apps Script) แทนข้อความด้านล่าง ===== */
+var API_URL = 'PASTE_WEB_APP_URL_HERE';
+
+var BOOT=null, ROOM='', LASTROW=0, PIN='', AUTO_AMT=false, AUTO_ITEM=false, BUSY=false;
+var $=function(id){return document.getElementById(id);};
+var baht=function(n){return (n<0?'-':'')+'฿'+Math.abs(Math.round(n)).toLocaleString('en-US');};
+var num=function(n){return Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});};
+
+/* ===== เรียก API ===== */
+function api(action, payload){
+  if(API_URL.indexOf('PASTE')===0) return Promise.reject(new Error('CONFIG'));
+  return fetch(API_URL, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},   // ห้ามใช้ application/json (จะติด CORS preflight)
+    body:JSON.stringify(Object.assign({action:action, pin:PIN}, payload||{}))
+  }).then(function(r){ return r.json(); })
+    .then(function(j){ if(j && j.error) throw new Error(j.error); return j; });
+}
+function errText(e){
+  var m=(e&&e.message)||'';
+  if(m==='PIN_WRONG')   return 'รหัสผ่านไม่ถูกต้อง';
+  if(m==='LOCKED')      return 'ใส่รหัสผิดหลายครั้ง ถูกล็อกชั่วคราว ลองใหม่ใน 30 นาที';
+  if(m==='PIN_NOT_SET') return 'ยังไม่ได้ตั้งรหัสผ่านฝั่ง Apps Script (Script properties: PIN)';
+  if(m==='CONFIG')      return 'ยังไม่ได้ใส่ URL ของ Web app ในไฟล์ index.html';
+  if(m.indexOf('JSON')>=0 || m==='Failed to fetch' || m==='Load failed' || m==='NetworkError when attempting to fetch resource.')
+    return 'เชื่อมต่อไม่สำเร็จ ตรวจอินเทอร์เน็ต หรืออาจใช้โควตา Apps Script เต็ม ลองใหม่อีกครั้ง';
+  return m||'เกิดข้อผิดพลาด';
+}
+
+/* ===== เข้าสู่ระบบ ===== */
+function boot(p, remember){
+  PIN=p;
+  api('bootstrap').then(function(b){
+    try{ if(remember) localStorage.setItem('condoPin',p); else localStorage.removeItem('condoPin'); }catch(e){}
+    $('lock').style.display='none'; $('app').style.display='block'; init(b);
+  }).catch(function(e){
+    var m=(e&&e.message)||'';
+    if(m==='PIN_WRONG'||m==='LOCKED'){ try{localStorage.removeItem('condoPin');}catch(x){} }
+    $('app').style.display='none'; $('lock').style.display='block';
+    $('pinErr').textContent=errText(e);
+    $('pinBtn').disabled=false; $('pinBtn').textContent='เข้าใช้งาน';
+  });
+}
+window.addEventListener('DOMContentLoaded',function(){
+  $('pinBtn').onclick=function(){
+    if(!$('pin').value) return;
+    $('pinBtn').disabled=true; $('pinBtn').textContent='กำลังตรวจสอบ';
+    $('pinErr').textContent=''; boot($('pin').value, $('remember').checked);
+  };
+  $('pin').addEventListener('keydown',function(e){ if(e.key==='Enter') $('pinBtn').click(); });
+  $('logout').onclick=function(){
+    try{localStorage.removeItem('condoPin');}catch(e){}
+    PIN=''; location.reload();
+  };
+  var saved=''; try{ saved=localStorage.getItem('condoPin')||''; }catch(e){}
+  if(saved){ $('lock').style.display='block'; $('pinErr').textContent='กำลังเข้าสู่ระบบ...'; boot(saved,true); }
+  else { $('lock').style.display='block'; }
+});
+
+/* ===== หน้าหลัก ===== */
+function init(b){
+  BOOT=b;
+  $('date').value=b.today;
+
+  var rw=$('rooms'); rw.innerHTML='';
+  b.rooms.concat([{name:'ส่วนตัว'}]).forEach(function(r){
+    var d=document.createElement('div'); d.className='chip'; d.textContent=r.name;
+    d.onclick=function(){ ROOM=r.name;
+      [].forEach.call(rw.children,function(c){c.classList.remove('on');});
+      d.classList.add('on'); autofill(); };
+    rw.appendChild(d);
+  });
+
+  var sel=$('cat'), gs={};
+  b.cats.forEach(function(c){ (gs[c.group]=gs[c.group]||[]).push(c.name); });
+  ['รายรับ','จ่ายประจำ','ลงทุน','ไม่นับ'].forEach(function(g){
+    if(!gs[g]) return;
+    var og=document.createElement('optgroup'); og.label=g;
+    gs[g].forEach(function(n){ var o=document.createElement('option'); o.value=n; o.textContent=n; og.appendChild(o); });
+    sel.appendChild(og);
+  });
+  sel.onchange=function(){ sync(); autofill(); };
+
+  ['principal','interest'].forEach(function(id){ $(id).oninput=checkSplit; });
+  $('amount').oninput=function(){ AUTO_AMT=false; checkSplit(); };
+  $('item').oninput=function(){ AUTO_ITEM=false; };
+  $('date').onchange=autofill;
+  $('save').onclick=save;
+  $('monthly').onclick=monthly;
+  $('barBtn').onclick=undo;
+  render(b.recent); meta();
+  sync();
+}
+
+function group(){
+  var c=$('cat').value; if(!c||!BOOT) return '';
+  for(var i=0;i<BOOT.cats.length;i++) if(BOOT.cats[i].name===c) return BOOT.cats[i].group;
+  return '';
+}
+function tone(g){ return g==='รายรับ'?'var(--in)':g==='ไม่นับ'?'var(--mute)':'var(--out)'; }
+function sync(){
+  var g=group();
+  $('amount').style.color = g ? tone(g) : 'var(--ink)';
+  $('split').className = ($('cat').value==='ค่างวด') ? 'split on' : 'split';
+  checkSplit();
+}
+function autoName(c){
+  var d=($('date').value||'').split('-');
+  return d.length===3 ? c+'เดือน '+Number(d[1])+'/'+d[0] : '';
+}
+function autofill(){
+  if(!BOOT) return;
+  var c=$('cat').value, r=null;
+  BOOT.rooms.forEach(function(x){ if(x.name===ROOM) r=x; });
+  var v = (!r||!c) ? 0 : (c==='ค่างวด'?r.inst : c==='ค่าประกัน'?r.ins : c==='ค่าเช่า'?r.rent : 0);
+
+  if(v>0){
+    if(AUTO_AMT || $('amount').value===''){ $('amount').value=v; AUTO_AMT=true; }
+  } else if(AUTO_AMT){ $('amount').value=''; AUTO_AMT=false; }
+
+  var nm = (c==='ค่างวด'||c==='ค่าเช่า') ? autoName(c) : '';
+  if(nm){
+    if(AUTO_ITEM || $('item').value===''){ $('item').value=nm; AUTO_ITEM=true; }
+  } else if(AUTO_ITEM){ $('item').value=''; AUTO_ITEM=false; }
+
+  checkSplit();
+}
+/* คืนค่า true ถ้าเงินต้น+ดอกเบี้ยตรงกับยอด หรือยังไม่กรอก */
+function checkSplit(){
+  var n=$('splitNote');
+  if($('cat').value!=='ค่างวด'){ n.textContent=''; return true; }
+  var a=Number($('amount').value)||0, p=$('principal').value, i=$('interest').value;
+  if(p===''&&i===''){ n.className='note bad'; n.textContent='ยังไม่ได้กรอก บันทึกได้ แต่ชีทจะขึ้นเตือนจนกว่าจะกรอกครบ'; return true; }
+  var s=Math.round(((Number(p)||0)+(Number(i)||0))*100)/100, t=Math.round(a*100)/100;
+  if(s===t){ n.className='note good'; n.textContent='เงินต้นรวมดอกเบี้ย ตรงกับยอดจ่าย'; return true; }
+  n.className='note bad'; n.textContent='ไม่ตรง รวมได้ '+num(s)+' ควรเป็น '+num(t)+' ต่างอยู่ '+num(t-s)+' (บันทึกไม่ได้จนกว่าจะตรงกัน)';
+  return false;
+}
+function render(list){
+  var el=$('recent'); el.textContent='';
+  if(!list||!list.length){
+    var e=document.createElement('div'); e.className='empty'; e.textContent='ยังไม่มีรายการ'; el.appendChild(e); return;
+  }
+  list.forEach(function(r){
+    var d=document.createElement('div'); d.className='r';
+    var dt=document.createElement('span'); dt.className='dt'; dt.textContent=r.date;
+    var tx=document.createElement('span'); tx.className='tx'; tx.textContent=(r.item||r.cat)+' ';
+    var sm=document.createElement('small'); sm.textContent=r.room; tx.appendChild(sm);
+    var vl=document.createElement('span'); vl.className='vl'; vl.style.color=tone(r.group);
+    vl.textContent=((r.group==='รายรับ')?'+':'-')+num(r.amount);
+    d.appendChild(dt); d.appendChild(tx); d.appendChild(vl); el.appendChild(d);
+  });
+}
+function meta(){
+  if(!BOOT) return;
+  var k=BOOT.kpi||{balance:0,cash:0,bad:0};
+  $('meta').textContent='';
+  var l1=document.createElement('div');
+  l1.textContent='เงินต้นคงเหลือรวม '+baht(k.balance)+'  ·  กระแสเงินสด/เดือน '+baht(k.cash);
+  var l2=document.createElement('div');
+  l2.textContent='เหลือที่ว่างอีก '+BOOT.remaining+' แถว'+(k.bad>0?'  ·  มี '+k.bad+' แถวที่ต้องแก้ในชีท':'');
+  $('meta').appendChild(l1); $('meta').appendChild(l2);
+}
+function applyResult(res){
+  render(res.recent);
+  if(res.kpi) BOOT.kpi=res.kpi;
+  if(typeof res.remaining==='number') BOOT.remaining=res.remaining;
+  meta();
+}
+
+function save(){
+  if(BUSY) return;
+  if(!ROOM) return toast('ยังไม่ได้เลือกห้อง',false);
+  if(!$('cat').value) return toast('ยังไม่ได้เลือกหมวด',false);
+  if(!(Number($('amount').value)>0)) return toast('ยังไม่ได้ใส่จำนวนเงิน',false);
+  if(!checkSplit()) return toast('เงินต้น + ดอกเบี้ย ต้องเท่ากับจำนวนเงิน',false);
+  BUSY=true; $('save').disabled=true; $('save').textContent='กำลังบันทึก';
+  api('save',{data:{
+    date:$('date').value, room:ROOM, cat:$('cat').value, item:$('item').value,
+    amount:$('amount').value, principal:$('principal').value, interest:$('interest').value, note:$('note').value
+  }}).then(function(res){
+    if(!res.ok) return toast(res.msg,false);
+    LASTROW=res.row; applyResult(res);
+    toast('บันทึกแล้ว แถว '+res.row,true);
+    ['amount','principal','interest','item','note'].forEach(function(id){ $(id).value=''; });
+    AUTO_AMT=false; AUTO_ITEM=false;
+    $('splitNote').textContent='';
+    window.scrollTo({top:0,behavior:'smooth'});
+  }).catch(function(e){ toast(errText(e),false); })
+    .then(function(){ BUSY=false; $('save').disabled=false; $('save').textContent='บันทึก'; });
+}
+function undo(){
+  if(!LASTROW || BUSY) return;
+  BUSY=true;
+  api('undo',{row:LASTROW}).then(function(res){
+    if(!res.ok) return toast(res.msg,false);
+    LASTROW=0; applyResult(res);
+    toast('ลบรายการล่าสุดแล้ว',true,true);
+  }).catch(function(e){ toast(errText(e),false); })
+    .then(function(){ BUSY=false; });
+}
+function monthly(){
+  if(BUSY) return;
+  var d=($('date').value||BOOT.today).split('-');
+  var s=prompt('สร้างรายการประจำเดือน — ใส่เดือนแบบ ดด/ปปปป', Number(d[1])+'/'+d[0]);
+  if(!s) return;
+  var m=s.trim().match(/^(\d{1,2})\s*\/\s*(\d{4})$/);
+  if(!m) return toast('รูปแบบไม่ถูกต้อง ต้องเป็น ดด/ปปปป',false);
+  run(m[1],m[2],false);
+  function run(mm,yy,force){
+    BUSY=true;
+    api('monthly',{mm:mm,yy:yy,force:force}).then(function(res){
+      BUSY=false;
+      if(!res.ok && res.dup){ if(confirm(res.msg)) run(mm,yy,true); return; }
+      if(!res.ok) return toast(res.msg,false);
+      applyResult(res);
+      toast('สร้าง '+res.n+' รายการแล้ว อย่าลืมกรอกเงินต้นและดอกเบี้ย',true,true);
+    }).catch(function(e){ BUSY=false; toast(errText(e),false); });
+  }
+}
+function toast(msg,ok,hide){
+  var b=$('bar'); $('barTxt').textContent=msg;
+  b.className='bar on '+(ok?'ok':'no');
+  $('barBtn').style.display=(ok&&!hide&&LASTROW)?'block':'none';
+  clearTimeout(window._t); window._t=setTimeout(function(){ b.className='bar'; },ok?6000:5000);
+}
+</script>
+</body>
+</html>
