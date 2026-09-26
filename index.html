@@ -356,6 +356,8 @@ function init(b){
   window.addEventListener('resize',function(){ clearTimeout(window._rz); window._rz=setTimeout(function(){ if(VIEW==='dash' && DASH) renderDash(); },150); });
   render(b.recent); meta();
   sync();
+  window.addEventListener('online',flushQueue);
+  flushQueue();
 }
 
 function group(){
@@ -408,7 +410,7 @@ function render(list){
     var e=document.createElement('div'); e.className='empty'; e.textContent='ยังไม่มีรายการ'; el.appendChild(e); return;
   }
   list.forEach(function(r){
-    var d=document.createElement('div'); d.className='r';
+    var d=document.createElement('div'); d.className='r'; if(r.pending) d.style.opacity='.5';
     var dt=document.createElement('span'); dt.className='dt'; dt.textContent=r.date;
     var tx=document.createElement('span'); tx.className='tx'; tx.textContent=(r.item||r.cat)+' ';
     var sm=document.createElement('small'); sm.textContent=r.room; tx.appendChild(sm);
@@ -435,34 +437,77 @@ function applyResult(res){
   meta();
 }
 
+/* ===== บันทึกแบบ optimistic: ล้างฟอร์มทันที ส่งเบื้องหลัง มีคิวลองใหม่ และกันบันทึกซ้ำด้วยรหัส cid ===== */
+var QKEY='condoQ', SENDING=false;
+function qLoad(){ try{ return JSON.parse(localStorage.getItem(QKEY)||'[]'); }catch(e){ return []; } }
+function qSave(a){ try{ localStorage.setItem(QKEY,JSON.stringify(a)); }catch(e){} }
+function fmtD(iso){ var p=iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0].slice(2); }
 function save(){
-  if(BUSY) return;
   if(!ROOM) return toast('ยังไม่ได้เลือกห้อง',false);
   if(!$('cat').value) return toast('ยังไม่ได้เลือกหมวด',false);
   if(!(Number($('amount').value)>0)) return toast('ยังไม่ได้ใส่จำนวนเงิน',false);
   if(!checkSplit()) return toast('เงินต้น + ดอกเบี้ย ต้องเท่ากับจำนวนเงิน',false);
-  BUSY=true; $('save').disabled=true; $('save').textContent='กำลังบันทึก';
-  api('save',{data:{
+  var data={cid:Date.now().toString(36)+Math.random().toString(36).slice(2,8),
     date:$('date').value, room:ROOM, cat:$('cat').value, item:$('item').value,
-    amount:$('amount').value, principal:$('principal').value, interest:$('interest').value, note:$('note').value
-  }}).then(function(res){
-    if(!res.ok) return toast(res.msg,false);
-    LASTROW=res.row; applyResult(res);
-    toast('บันทึกแล้ว แถว '+res.row,true);
-    ['amount','principal','interest','item','note'].forEach(function(id){ $(id).value=''; });
-    AUTO_AMT=false; AUTO_ITEM=false;
-    $('splitNote').textContent='';
-    window.scrollTo({top:0,behavior:'smooth'});
-  }).catch(function(e){ toast(errText(e),false); })
-    .then(function(){ BUSY=false; $('save').disabled=false; $('save').textContent='บันทึก'; });
+    amount:$('amount').value, principal:$('principal').value, interest:$('interest').value, note:$('note').value};
+  var q=qLoad(); q.push(data); qSave(q);
+  BOOT.recent=[{cid:data.cid,row:0,date:fmtD(data.date),room:data.room,cat:data.cat,item:data.item,amount:Number(data.amount),group:group(),pending:true}].concat(BOOT.recent||[]).slice(0,6);
+  render(BOOT.recent);
+  ['amount','principal','interest','item','note'].forEach(function(id){ $(id).value=''; });
+  AUTO_AMT=false; AUTO_ITEM=false; $('splitNote').textContent='';
+  toast('กำลังส่ง... ป้อนรายการต่อได้เลย',true,true);
+  flushQueue();
+}
+function restoreForm(it){
+  ROOM=it.room; [].forEach.call($('rooms').children,function(c){ c.classList.toggle('on',c.textContent===it.room); });
+  $('cat').value=it.cat; sync();
+  $('amount').value=it.amount; $('principal').value=it.principal; $('interest').value=it.interest;
+  $('item').value=it.item; $('note').value=it.note; $('date').value=it.date; checkSplit();
+}
+function recentMark(cid,row){
+  BOOT.recent=(BOOT.recent||[]).map(function(r){ if(r.cid===cid){ if(row){ r.row=row; delete r.pending; } else return null; } return r; }).filter(Boolean);
+  render(BOOT.recent);
+}
+function flushQueue(){
+  if(SENDING) return;
+  var q=qLoad(); if(!q.length){ return; }
+  SENDING=true; var it=q[0];
+  api('save',{data:it}).then(function(res){
+    qSave(qLoad().filter(function(x){ return x.cid!==it.cid; }));
+    var left=qLoad().length;
+    if(!res.ok){ recentMark(it.cid,0); restoreForm(it); toast(res.msg,false); }
+    else {
+      LASTROW=res.row; DASH_STALE=true;
+      if(typeof BOOT.remaining==='number') BOOT.remaining=Math.max(0,BOOT.remaining-1);
+      recentMark(it.cid,res.row); meta();
+      toast('บันทึกแล้ว แถว '+res.row+(left?' · เหลืออีก '+left+' รายการ':''),true,left>0);
+    }
+    SENDING=false;
+    if(left) flushQueue(); else refreshBoot();
+  }).catch(function(e){
+    SENDING=false; var m=(e&&e.message)||'';
+    toast((m==='PIN_WRONG'||m==='LOCKED') ? errText(e) : 'ส่งไม่สำเร็จ เก็บไว้ในเครื่อง '+qLoad().length+' รายการ จะลองใหม่ให้เอง',false);
+    clearTimeout(window._rt); window._rt=setTimeout(flushQueue,20000);
+  });
+}
+/* โหลดรายการล่าสุด/ตัวเลขสรุปจากชีทเงียบ ๆ หลังส่งเสร็จ (ไม่บล็อกหน้าจอ) */
+function refreshBoot(){
+  if(SENDING || qLoad().length) return;
+  api('bootstrap').then(function(b){
+    if(SENDING || qLoad().length) return;
+    BOOT.recent=b.recent; BOOT.kpi=b.kpi; BOOT.remaining=b.remaining; render(BOOT.recent); meta();
+  }).catch(function(){});
 }
 function undo(){
-  if(!LASTROW || BUSY) return;
-  BUSY=true;
-  api('undo',{row:LASTROW}).then(function(res){
+  if(!LASTROW || BUSY || SENDING) return;
+  BUSY=true; var row=LASTROW;
+  api('undo',{row:row}).then(function(res){
     if(!res.ok) return toast(res.msg,false);
-    LASTROW=0; applyResult(res);
-    toast('ลบรายการล่าสุดแล้ว',true,true);
+    LASTROW=0; DASH_STALE=true;
+    BOOT.recent=(BOOT.recent||[]).filter(function(r){ return r.row!==row; });
+    if(typeof BOOT.remaining==='number') BOOT.remaining+=1;
+    render(BOOT.recent); meta();
+    toast('ลบรายการล่าสุดแล้ว',true,true); refreshBoot();
   }).catch(function(e){ toast(errText(e),false); })
     .then(function(){ BUSY=false; });
 }
