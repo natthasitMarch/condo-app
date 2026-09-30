@@ -472,7 +472,11 @@ function sync(){
 }
 function autoName(c){
   var d=($('date').value||'').split('-');
-  return d.length===3 ? c+'เดือน '+Number(d[1])+'/'+d[0] : '';
+  if(d.length!==3) return '';
+  var y=Number(d[0]), m=Number(d[1]), day=Number(d[2]);
+  /* ค่าเช่ามักจ่ายล่วงหน้า: จ่ายช่วงปลายเดือน (วันที่ 25 ขึ้นไป) ถือเป็นค่าเช่าเดือนถัดไป */
+  if(c==='ค่าเช่า' && day>=25){ m+=1; if(m>12){ m=1; y+=1; } }
+  return c+'เดือน '+m+'/'+y;
 }
 function autofill(){
   if(!BOOT) return;
