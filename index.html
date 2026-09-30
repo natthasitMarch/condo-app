@@ -563,7 +563,8 @@ function save(){
   if(!checkSplit()) return toast('เงินต้น + ดอกเบี้ย ต้องเท่ากับจำนวนเงิน',false);
   var data={cid:Date.now().toString(36)+Math.random().toString(36).slice(2,8),
     date:$('date').value, room:ROOM, cat:$('cat').value, item:$('item').value,
-    amount:$('amount').value, principal:$('principal').value, interest:$('interest').value, note:$('note').value};
+    amount:$('amount').value, principal:$('principal').value, interest:$('interest').value, note:$('note').value,
+    forMonth:$('forMonth').value};
   MUT++; var q=qLoad(); q.push(data); qSave(q);
   BOOT.recent=[{cid:data.cid,row:0,date:fmtD(data.date),room:data.room,cat:data.cat,item:data.item,amount:Number(data.amount),group:group(),pending:true}].concat(BOOT.recent||[]).slice(0,6);
   render(BOOT.recent);
