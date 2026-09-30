@@ -85,6 +85,7 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .chip{padding:9px 2px;text-align:center;border-radius:9px;font-size:15px;cursor:pointer;user-select:none;color:var(--ink);
  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .15s}
 .chip.on{background:var(--segon);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.14),0 0 1px rgba(0,0,0,.1)}
+.roomAddr{min-height:18px;margin-top:6px;padding:0 4px;font-size:12.5px;color:var(--mute);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .amt{padding:18px 16px 14px;text-align:center}
 .amt label{display:block;font-size:13px;color:var(--mute);margin:0 0 2px}
@@ -179,6 +180,7 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .rr .rt b{font-size:16px}
 .rr .rt span{font-size:13px;color:var(--mute);margin-left:8px}
 .rr .pf{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:15px}
+.rr .raddr{font-size:12px;color:var(--mute);margin-top:2px}
 .rr .meter{height:8px;margin-top:10px}
 .tabwrap{overflow-x:auto;margin-top:10px}
 table.tb{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
@@ -264,6 +266,7 @@ details.more[open]>summary{margin-bottom:14px}
     <div id="viewLog">
       <section class="formCol">
         <div class="seg2" id="rooms" role="tablist" aria-label="ห้อง"></div>
+        <div id="roomAddr" class="roomAddr"></div>
 
         <div class="group amt" style="margin-top:16px">
           <label for="amount">จำนวนเงิน (บาท)</label>
@@ -428,7 +431,7 @@ function init(b){
     var d=document.createElement('div'); d.className='chip'; d.textContent=r.name; d.setAttribute('role','tab');
     d.onclick=function(){ ROOM=r.name;
       [].forEach.call(rw.children,function(c){c.classList.remove('on');});
-      d.classList.add('on'); autofill(); };
+      d.classList.add('on'); autofill(); updateRoomAddr(); };
     rw.appendChild(d);
   });
 
@@ -560,6 +563,12 @@ function restoreForm(it){
   $('cat').value=it.cat; sync();
   $('amount').value=it.amount; $('principal').value=it.principal; $('interest').value=it.interest;
   $('item').value=it.item; $('note').value=it.note; $('date').value=it.date; checkSplit();
+  updateRoomAddr();
+}
+function updateRoomAddr(){
+  var el=$('roomAddr'); if(!el) return;
+  var r=null; (BOOT&&BOOT.rooms||[]).forEach(function(x){ if(x.name===ROOM) r=x; });
+  el.textContent = (r && r.addr) ? r.addr : '';
 }
 function recentMark(cid,row){
   BOOT.recent=(BOOT.recent||[]).map(function(r){ if(r.cid===cid){ if(row){ r.row=row; delete r.pending; } else return null; } return r; }).filter(Boolean);
@@ -911,6 +920,7 @@ function renderDash(){
     var row=H('div','rr',null,rc), top=H('div','rt',null,row), nm=H('div',null,null,top);
     H('b',null,l.room.name,nm); H('span',null,l.room.tenant||'ยังไม่มีผู้เช่า',nm);
     var prof=l.rent-l.opex; H('div','pf','กำไร '+(prof>0?'+':'')+baht(prof),top);
+    if(l.room.addr) H('div','raddr',l.room.addr,row);
     var m2=H('div','meter',null,row), i2=H('i',null,null,m2); i2.style.width=Math.max(0.6,l.pct*100)+'%';
     var ml2=H('div','mlab',null,row); H('span',null,'ผ่อนแล้ว '+(l.pct*100).toFixed(1)+'%',ml2); H('span',null,'เหลือ '+baht(l.left),ml2);
   });
